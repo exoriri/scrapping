@@ -49,6 +49,7 @@ const getScrappedData = async (website, protocol) => {
         const additionalInfo = worksheet.getColumn(10).values;
         const names = worksheet.getColumn(11).values;
         const statuses = worksheet.getColumn(12).values;
+
         const contactsWorksheet = workbookWriting.addWorksheet('Лист 1');
 
         contactsWorksheet.columns = [
@@ -67,14 +68,20 @@ const getScrappedData = async (website, protocol) => {
             { key: "status", header: "Status" }
         ];
 
+        const indexToAdd = 2;
+        let count = 0;
 
-        for (let i = 8; i < websites.length; i++) {
+        for (let i = indexToAdd; i < websites.length; i++) {
             const contacts = {
-                tel: '#N/A',
-                vk: '#N/A'
+                tel: {error : '#N/A'},
+                vk: {error : '#N/A'}
             };
 
-            if (phoneNumbers[i].error) {
+            if (!phoneNumbers[i].error && phoneNumbers[i] !== '#N/A') {
+                count += 1;
+            }
+            
+            if (phoneNumbers[i].error || phoneNumbers[i] === '#N/A') {
                 try {
                     const tel = await getScrappedData(websites[i], 'https');
                     if (tel.length === 0) {
@@ -90,24 +97,6 @@ const getScrappedData = async (website, protocol) => {
                     };
                 } catch(e) {
                     console.log('ERROR', e.message);
-                    console.log('trying http');
-                    try {
-                        const tel = await getScrappedData(websites[i], 'http');
-
-                        if (tel.length === 0) {
-                            const tel = await getScrappedData(`${websites[i]}/contacts`, 'http');
-                            if (tel.length === 0) {
-                                const tel = await getScrappedData(`${websites[i]}/contact`, 'http');
-                                contacts.tel = tel;
-                            } else {
-                                contacts.tel = tel;
-                            };
-                        } else {
-                            contacts.tel = tel;
-                        };
-                    } catch(e) {
-                        console.log('TRIED ALL VARIANTS')
-                    }
                 }
             } else {
                 contacts.tel = phoneNumbers[i];
@@ -119,25 +108,24 @@ const getScrappedData = async (website, protocol) => {
 
         };
 
-        for (let i = 2; i < Object.keys(res).length; i++) {
+        Object.keys(res).forEach((key, i) => {
+            const phoneNumber = res[key].tel ? res[key].tel : { error: '#N/A' };
             contactsWorksheet.addRow({
-                rank: ranks[i],
-                domain: websites[i],
-                organicKeywords: organicKeywords[i],
-                organicTraffic: organicTraffics[i],
-                organicCost: organicCost[i],
-                adwordsKeywords: adwordsKeywords[i],
-                adwordsTraffic: adwordsTraffics[i],
-                adwordsCost: adwordsCosts[i],
-                phoneNumber: res[Object.keys(res)[i]].tel.length !== 0 ? res[Object.keys(res)[i]].tel.length !== 0 : '#N/A',
-                anotherContact: additionalInfo[i],
-                name: names[i],
+                rank: ranks[i+indexToAdd],
+                domain: websites[i+indexToAdd],
+                organicKeywords: organicKeywords[i+indexToAdd],
+                organicTraffic: organicTraffics[i+indexToAdd],
+                organicCost: organicCost[i+indexToAdd],
+                adwordsKeywords: adwordsKeywords[i+indexToAdd],
+                adwordsTraffic: adwordsTraffics[i+indexToAdd],
+                adwordsCost: adwordsCosts[i+indexToAdd],
+                phoneNumber,
+                anotherContact: additionalInfo[i+indexToAdd],
+                name: names[i+indexToAdd],
                 comment: '',
-                status: statuses[i]
-            })
-        }
-
-
+                status: statuses[i+indexToAdd]
+            });
+        })
 
         const contactsXlsx = await workbookWriting.xlsx.writeFile('contacts.xlsx');
     });
